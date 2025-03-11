@@ -7,11 +7,9 @@ import {
 import { sha256 } from "@oslojs/crypto/sha2";
 import type { User, Session } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { cache } from "react";
 
 // Generate a random session token
-export function generateSessionToken(): string {
+export async function generateSessionToken(): Promise<string> {
   const bytes = new Uint8Array(20);
   crypto.getRandomValues(bytes);
   const token = encodeBase32LowerCaseNoPadding(bytes);
@@ -27,7 +25,7 @@ export async function createSession(
   const session: Session = {
     id: sessionId,
     userId,
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
   };
   await prisma.session.create({
     data: session,
@@ -57,7 +55,7 @@ export async function validateSessionToken(
     return { session: null, user: null };
   }
   if (Date.now() >= session.expiresAt.getTime() - 1000 * 60 * 60 * 24 * 15) {
-    session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
+    session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30); // 30 days
     await prisma.session.update({
       where: {
         id: session.id,
@@ -88,46 +86,3 @@ export async function invalidateAllSessions(userId: number): Promise<void> {
 export type SessionValidationResult =
   | { session: Session; user: User }
   | { session: null; user: null };
-
-// ---------------------------------------------------------------------------
-// --------------------------------- COOKIES ---------------------------------
-// ---------------------------------------------------------------------------
-// Set the session token cookie
-export async function setSessionTokenCookie(
-  token: string,
-  expiresAt: Date
-): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set("session", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    expires: expiresAt,
-    path: "/",
-  });
-}
-
-// Delete the session token cookie
-export async function deleteSessionTokenCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set("session", "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 0,
-    path: "/",
-  });
-}
-
-// Get the current session
-export const getCurrentSession = cache(
-  async (): Promise<SessionValidationResult> => {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value ?? null;
-    if (token === null) {
-      return { session: null, user: null };
-    }
-    const result = await validateSessionToken(token);
-    return result;
-  }
-);

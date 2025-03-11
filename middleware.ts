@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       // a new session wasn't set when handling the request.
       response.cookies.set("session", token, {
         path: "/",
-        maxAge: 60 * 60 * 24 * 30,
+        maxAge: 60 * 60 * 24 * 30, // 30 days
         sameSite: "lax",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
