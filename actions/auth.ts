@@ -46,14 +46,17 @@ export async function validateSessionToken(
       user: true,
     },
   });
+
   if (result === null) {
     return { session: null, user: null };
   }
+
   const { user, ...session } = result;
   if (Date.now() >= session.expiresAt.getTime()) {
     await prisma.session.delete({ where: { id: sessionId } });
     return { session: null, user: null };
   }
+
   if (Date.now() >= session.expiresAt.getTime() - 1000 * 60 * 60 * 24 * 15) {
     session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30); // 30 days
     await prisma.session.update({
@@ -65,7 +68,13 @@ export async function validateSessionToken(
       },
     });
   }
-  return { session, user };
+
+  const safeUser = {
+    ...user,
+    passwordHash: undefined,
+  };
+
+  return { session, user: safeUser };
 }
 
 // Invalidate a session
@@ -84,5 +93,5 @@ export async function invalidateAllSessions(userId: number): Promise<void> {
 
 // Session validation result
 export type SessionValidationResult =
-  | { session: Session; user: User }
+  | { session: Session; user: Omit<User, "passwordHash"> }
   | { session: null; user: null };

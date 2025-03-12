@@ -26,6 +26,20 @@ export const verifyPassword = async (password: string, hash: string) => {
 
 // Register a new user
 export const registerUser = async (email: string, password: string) => {
+  // Check if the user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+
+  if (existingUser) {
+    return {
+      user: null,
+      error: "User already exists. Please login instead",
+    };
+  }
+
   const passwordHash = await hashPassword(password);
 
   try {
@@ -69,7 +83,7 @@ export const loginUser = async (email: string, password: string) => {
   if (!(await verifyPassword(password, user.passwordHash))) {
     return {
       user: null,
-      error: "Invalid password",
+      error: "Invalid email and/or password",
     };
   }
 
