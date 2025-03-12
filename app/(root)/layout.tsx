@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
 import { Inter } from "next/font/google";
+import Header from "@/components/layout/Header";
 import { ReactNode } from "react";
+import { getCurrentSession } from "@/actions/cookies";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,9 +17,14 @@ const RootLayout = async ({
 }: Readonly<{
   children: ReactNode;
 }>) => {
+  const session = await getCurrentSession();
+
+  const user = session ? session.user : null;
+
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased min-h-[125vh]`}>
+        <Header user={user} />
         {children}
       </body>
     </html>
